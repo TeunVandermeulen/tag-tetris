@@ -213,7 +213,7 @@
       font-size: 0.72rem;
       font-weight: 300;
       color: var(--text-dim);
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .overlay-score {
       font-size: 2.6rem;
@@ -221,6 +221,35 @@
       color: var(--blue);
       margin-bottom: 24px;
       display: none;
+    }
+
+    /* ── NAME INPUT ── */
+    .name-input-wrap {
+      margin-bottom: 20px;
+    }
+    #player-name-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 3px;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.15s;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+    #player-name-input:focus { border-color: var(--blue); }
+    #player-name-input.error {
+      border-color: #e05353;
+      animation: shake 0.3s;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25%       { transform: translateX(-6px); }
+      75%       { transform: translateX(6px); }
     }
 
     #start-btn {
@@ -238,6 +267,98 @@
       transition: background 0.15s;
     }
     #start-btn:hover { background: var(--blue-dark); }
+
+    /* ── LEADERBOARD ── */
+    .leaderboard-section {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 640px;
+    }
+
+    .panel-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--blue);
+      text-transform: uppercase;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--blue);
+      margin-bottom: 12px;
+    }
+
+    .lb-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #2ecc71;
+    }
+    .lb-live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2ecc71;
+      animation: livepulse 1.5s infinite;
+    }
+    @keyframes livepulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.35; transform: scale(0.7); }
+    }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      padding: 9px 4px;
+      border-bottom: 1px solid var(--border);
+      gap: 10px;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row.lb-first {
+      background: rgba(26,111,181,0.05);
+      border-radius: 3px;
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+
+    .lb-rank {
+      width: 32px;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+    .lb-first .lb-rank { font-size: 1.15rem; line-height: 1; }
+
+    .lb-name {
+      flex: 1;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lb-first .lb-name { color: var(--blue); }
+
+    .lb-score {
+      font-weight: 900;
+      font-size: 0.88rem;
+      color: var(--blue);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lb-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.78rem;
+    }
 
     /* ── FOOTER ── */
     footer {
@@ -316,6 +437,21 @@
   </div>
 </div>
 
+<!-- LEADERBOARD -->
+<div class="leaderboard-section">
+  <div class="panel">
+    <div class="panel-title-row">
+      <span>Leaderboard</span>
+      <span class="lb-live" id="lb-live-indicator" style="display:none;">
+        <span class="lb-live-dot"></span>LIVE
+      </span>
+    </div>
+    <div id="leaderboard-list">
+      <div class="lb-empty">Loading scores…</div>
+    </div>
+  </div>
+</div>
+
 <footer>
   Made with ♥ by TAG &nbsp;·&nbsp; <a href="https://www.tag-team.be/" target="_blank">tag-team.be</a>
 </footer>
@@ -334,9 +470,23 @@
     <h2 id="overlay-title">TAG Tetris</h2>
     <p class="sub" id="overlay-sub">How high can you score?</p>
     <div class="overlay-score" id="overlay-score"></div>
+    <div class="name-input-wrap" id="name-input-wrap">
+      <input
+        type="text"
+        id="player-name-input"
+        placeholder="Enter your name…"
+        maxlength="20"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
     <button id="start-btn">Play</button>
   </div>
 </div>
+
+<!-- Firebase Realtime Database (compat SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <script>
 // ─────────────────────────────────────────────
@@ -577,22 +727,30 @@ function endGame() {
     localStorage.setItem('tag_tetris_hi', hiScore);
   }
   updateHUD();
-  showOverlay('Game Over', 'Your score', score, 'Play Again');
+  if (playerName && score > 0) submitScore(playerName, score);
+  showOverlay('Game Over', 'Your score', score, 'Play Again', false);
 }
 
 // ── OVERLAY ──
-function showOverlay(title, sub, scoreVal, btn) {
+function showOverlay(title, sub, scoreVal, btn, showNameInput) {
   document.getElementById('overlay-title').textContent = title;
   document.getElementById('overlay-sub').textContent   = sub;
   const sd = document.getElementById('overlay-score');
   if (scoreVal !== null) {
     sd.style.display = 'block';
-    sd.textContent   = scoreVal.toLocaleString();
+    sd.textContent   = Number(scoreVal).toLocaleString();
   } else {
     sd.style.display = 'none';
   }
+  const wrap = document.getElementById('name-input-wrap');
+  wrap.style.display = showNameInput ? 'block' : 'none';
   document.getElementById('start-btn').textContent = btn;
   document.getElementById('overlay').classList.remove('hidden');
+  if (showNameInput) {
+    const inp = document.getElementById('player-name-input');
+    inp.value = playerName;
+    setTimeout(() => inp.focus(), 50);
+  }
 }
 function hideOverlay() {
   document.getElementById('overlay').classList.add('hidden');
@@ -635,10 +793,130 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-document.getElementById('start-btn').addEventListener('click', startGame);
+// ── START BUTTON ──
+function handlePlay() {
+  const wrap = document.getElementById('name-input-wrap');
+  if (wrap.style.display !== 'none') {
+    const inp = document.getElementById('player-name-input');
+    const name = inp.value.trim();
+    if (!name) {
+      inp.classList.add('error');
+      setTimeout(() => inp.classList.remove('error'), 400);
+      inp.focus();
+      return;
+    }
+    playerName = name;
+    localStorage.setItem('tag_tetris_player', name);
+  }
+  startGame();
+}
 
-// Boot screen
-showOverlay('TAG Tetris', 'How high can you score?', null, 'Play');
+document.getElementById('start-btn').addEventListener('click', handlePlay);
+document.getElementById('player-name-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handlePlay();
+});
+
+// ─────────────────────────────────────────────
+//  LEADERBOARD & FIREBASE
+// ─────────────────────────────────────────────
+
+// ⚠️  FIREBASE SETUP  ──────────────────────────
+// To enable a shared live leaderboard across all players:
+//  1. Go to https://console.firebase.google.com
+//  2. Create a project → Add a web app → copy the config below
+//  3. Go to Build → Realtime Database → Create database (start in test mode)
+//  4. Set database rules to allow read/write (test mode does this by default)
+//
+// Without a config the leaderboard falls back to localStorage (local only).
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyDjGfY-_tgGRVJhjPDahVSN7s7DorUtxCg",
+  authDomain:        "tag-tetris.firebaseapp.com",
+  databaseURL:       "https://tag-tetris-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "tag-tetris",
+  storageBucket:     "tag-tetris.firebasestorage.app",
+  messagingSenderId: "944322582130",
+  appId:             "1:944322582130:web:083d0f159794588c9314eb"
+};
+// ─────────────────────────────────────────────
+
+let db = null;
+let playerName = localStorage.getItem('tag_tetris_player') || '';
+
+function initFirebase() {
+  if (!FIREBASE_CONFIG.apiKey) {
+    renderLeaderboard(getLocalScores());
+    return;
+  }
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    document.getElementById('lb-live-indicator').style.display = 'inline-flex';
+    setupLiveLeaderboard();
+  } catch (err) {
+    console.warn('Firebase init failed:', err);
+    renderLeaderboard(getLocalScores());
+  }
+}
+
+function setupLiveLeaderboard() {
+  db.ref('scores')
+    .orderByChild('score')
+    .limitToLast(10)
+    .on('value', snap => {
+      const arr = [];
+      snap.forEach(child => arr.push(child.val()));
+      arr.sort((a, b) => b.score - a.score);
+      renderLeaderboard(arr);
+    });
+}
+
+function submitScore(name, scoreVal) {
+  saveLocalScore(name, scoreVal);
+  if (!db) return;
+  db.ref('scores').push({ name, score: scoreVal, ts: Date.now() });
+}
+
+// ── LOCAL STORAGE FALLBACK ──
+function saveLocalScore(name, scoreVal) {
+  const scores = getLocalScores();
+  scores.push({ name, score: scoreVal });
+  scores.sort((a, b) => b.score - a.score);
+  localStorage.setItem('tag_tetris_scores', JSON.stringify(scores.slice(0, 50)));
+  if (!db) renderLeaderboard(scores.slice(0, 10));
+}
+
+function getLocalScores() {
+  try { return JSON.parse(localStorage.getItem('tag_tetris_scores') || '[]'); }
+  catch { return []; }
+}
+
+// ── RENDER ──
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderLeaderboard(scores) {
+  const list = document.getElementById('leaderboard-list');
+  if (!scores.length) {
+    list.innerHTML = '<div class="lb-empty">No scores yet — be the first to play!</div>';
+    return;
+  }
+  list.innerHTML = scores.map((s, i) => `
+    <div class="lb-row${i === 0 ? ' lb-first' : ''}">
+      <span class="lb-rank">${i === 0 ? '🏆' : i + 1}</span>
+      <span class="lb-name">${esc(s.name)}</span>
+      <span class="lb-score">${Number(s.score).toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+
+// ── BOOT ──
+initFirebase();
+showOverlay('TAG Tetris', 'How high can you score?', null, 'Play', true);
 </script>
 </body>
 </html>
