@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TAG Tetris – Tactical Advisory Group</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ── DESIGN TOKENS ── */
+    :root {
+      --blue:        #1a6fb5;   /* TAG primary blue  */
+      --blue-dark:   #134f82;   /* darker shade      */
+      --blue-light:  #8aaed4;   /* lighter triangle  */
+      --silver:      #a8becc;   /* TAG silver-blue (A triangle) */
+      --bg:          #f5f7f9;
+      --bg-game:     #0d1a26;   /* dark board area   */
+      --white:       #ffffff;
+      --text:        #1a2a3a;
+      --text-dim:    #6a8aaa;
+      --border:      #d0dce8;
+      --font:        'Lato', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 0 16px 32px;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      width: 100%;
+      background: var(--blue);
+      height: 4px;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 18px 0 16px;
+      width: 100%;
+      max-width: 660px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    /* SVG logo that replicates the TAG letter-mark */
+    .tag-logo-svg {
+      height: 44px;
+      flex-shrink: 0;
+    }
+
+    .header-right h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: 0.04em;
+    }
+    .header-right p {
+      font-size: 0.75rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      margin-top: 1px;
+    }
+
+    /* ── GAME WRAPPER ── */
+    .game-wrapper {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    /* ── PANEL ── */
+    .panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 16px;
+      min-width: 140px;
+    }
+
+    .panel-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--blue);
+      text-transform: uppercase;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--blue);
+      margin-bottom: 12px;
+    }
+
+    .stat-block { margin-bottom: 16px; }
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--blue);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.62rem;
+      font-weight: 400;
+      color: var(--text-dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* ── GAME CANVAS ── */
+    #game-canvas {
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      display: block;
+      box-shadow: 0 4px 24px rgba(26,111,181,0.15);
+    }
+
+    /* ── NEXT PIECE ── */
+    #next-canvas {
+      background: var(--bg-game);
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      display: block;
+      margin-top: 8px;
+    }
+
+    /* ── CONTROLS LIST ── */
+    .controls { margin-top: 4px; }
+    .ctrl-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 0.62rem;
+      color: var(--text-dim);
+    }
+    .ctrl-row kbd {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-family: var(--font);
+      font-size: 0.6rem;
+      color: var(--text);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* ── OVERLAY ── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(13,26,38,0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(3px);
+    }
+    #overlay.hidden { display: none; }
+
+    .overlay-card {
+      background: var(--white);
+      border-radius: 6px;
+      border-top: 4px solid var(--blue);
+      padding: 40px 52px;
+      text-align: center;
+      max-width: 340px;
+      width: 90%;
+    }
+
+    /* inline TAG logo in overlay */
+    .overlay-logo { height: 36px; margin-bottom: 20px; }
+
+    .overlay-card h2 {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--blue);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .overlay-card .sub {
+      font-size: 0.72rem;
+      font-weight: 300;
+      color: var(--text-dim);
+      margin-bottom: 24px;
+    }
+    .overlay-score {
+      font-size: 2.6rem;
+      font-weight: 900;
+      color: var(--blue);
+      margin-bottom: 24px;
+      display: none;
+    }
+
+    #start-btn {
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      font-family: var(--font);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 12px 36px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #start-btn:hover { background: var(--blue-dark); }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 20px;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-align: center;
+      letter-spacing: 0.06em;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="topbar"></div>
+
+<!-- HEADER -->
+<header>
+  <!-- Accurate TAG lettermark SVG -->
+  <svg class="tag-logo-svg" viewBox="0 0 220 68" xmlns="http://www.w3.org/2000/svg">
+    <!-- T -->
+    <rect x="0"  y="0"  width="50" height="11" fill="#1a6fb5"/>
+    <rect x="19" y="0"  width="12" height="68" fill="#1a6fb5"/>
+    <!-- A  (left leg dark blue, right triangle silver-blue) -->
+    <polygon points="70,68 100,0 115,0 115,68 103,68 103,11 82,68" fill="#1a6fb5"/>
+    <polygon points="100,0 130,68 115,68 115,0"                    fill="#8aaed4"/>
+    <!-- G -->
+    <path d="M170,0 A34,34 0 1,0 204,50 L204,34 L182,34 L182,44 L192,44
+             A22,22 0 1,1 170,12 L170,0 Z" fill="#1a6fb5"/>
+    <rect x="182" y="34" width="22" height="10" fill="#1a6fb5"/>
+  </svg>
+
+  <div class="header-right">
+    <h1>TAG Tetris</h1>
+    <p>A fun little game by the team at TAG</p>
+  </div>
+</header>
+
+<!-- GAME -->
+<div class="game-wrapper">
+
+  <!-- LEFT: stats -->
+  <div class="panel">
+    <div class="panel-title">Score</div>
+    <div class="stat-block">
+      <div class="stat-value" id="score-display">0</div>
+      <div class="stat-label">Points</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-value" id="hi-display">0</div>
+      <div class="stat-label">Best</div>
+    </div>
+    <div class="panel-title" style="margin-top:8px;">Progress</div>
+    <div class="stat-block">
+      <div class="stat-value" id="level-display">1</div>
+      <div class="stat-label">Level</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-value" id="lines-display">0</div>
+      <div class="stat-label">Lines</div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <canvas id="game-canvas" width="300" height="600"></canvas>
+
+  <!-- RIGHT: next + controls -->
+  <div class="panel">
+    <div class="panel-title">Next</div>
+    <canvas id="next-canvas" width="120" height="120"></canvas>
+
+    <div class="panel-title" style="margin-top:18px;">Controls</div>
+    <div class="controls">
+      <div class="ctrl-row"><span>Move</span>     <kbd>← →</kbd></div>
+      <div class="ctrl-row"><span>Rotate</span>   <kbd>↑</kbd></div>
+      <div class="ctrl-row"><span>Soft drop</span><kbd>↓</kbd></div>
+      <div class="ctrl-row"><span>Hard drop</span><kbd>Space</kbd></div>
+      <div class="ctrl-row"><span>Pause</span>    <kbd>P</kbd></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Made with ♥ by TAG &nbsp;·&nbsp; <a href="https://www.tag-team.be/" target="_blank">tag-team.be</a>
+</footer>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <div class="overlay-card">
+    <!-- Same TAG SVG in overlay -->
+    <svg class="overlay-logo" viewBox="0 0 220 68" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0"  y="0"  width="50" height="11" fill="#1a6fb5"/>
+      <rect x="19" y="0"  width="12" height="68" fill="#1a6fb5"/>
+      <polygon points="70,68 100,0 115,0 115,68 103,68 103,11 82,68" fill="#1a6fb5"/>
+      <polygon points="100,0 130,68 115,68 115,0"                    fill="#8aaed4"/>
+      <path d="M170,0 A34,34 0 1,0 204,50 L204,34 L182,34 L182,44 L192,44
+               A22,22 0 1,1 170,12 L170,0 Z" fill="#1a6fb5"/>
+      <rect x="182" y="34" width="22" height="10" fill="#1a6fb5"/>
+    </svg>
+    <h2 id="overlay-title">TAG Tetris</h2>
+    <p class="sub" id="overlay-sub">How high can you score?</p>
+    <div class="overlay-score" id="overlay-score"></div>
+    <button id="start-btn">Play</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  TAG TETRIS
+// ─────────────────────────────────────────────
+const COLS = 10, ROWS = 20, CELL = 30;
+
+const canvas  = document.getElementById('game-canvas');
+const ctx     = canvas.getContext('2d');
+const nextCvs = document.getElementById('next-canvas');
+const nCtx    = nextCvs.getContext('2d');
+
+// TAG color palette for pieces
+const COLORS = {
+  I: '#1a6fb5',   // TAG blue
+  O: '#8aaed4',   // TAG silver-blue
+  T: '#1a6fb5',
+  S: '#5a9fd4',
+  Z: '#134f82',
+  J: '#3a8fd5',
+  L: '#a8becc',
+};
+
+const SHAPES = {
+  I: [[0,1],[1,1],[2,1],[3,1]],
+  O: [[0,0],[1,0],[0,1],[1,1]],
+  T: [[0,1],[1,1],[2,1],[1,0]],
+  S: [[1,0],[2,0],[0,1],[1,1]],
+  Z: [[0,0],[1,0],[1,1],[2,1]],
+  J: [[0,0],[0,1],[1,1],[2,1]],
+  L: [[2,0],[0,1],[1,1],[2,1]],
+};
+const KEYS = Object.keys(SHAPES);
+
+let board, piece, nextPiece, score, lines, level, hiScore, dropTimer, dropInterval, running, paused;
+hiScore = parseInt(localStorage.getItem('tag_tetris_hi') || '0');
+document.getElementById('hi-display').textContent = hiScore;
+
+function initBoard() {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+
+function randomPiece() {
+  const k = KEYS[Math.floor(Math.random() * KEYS.length)];
+  return {
+    cells: SHAPES[k].map(c => [...c]),
+    color: COLORS[k],
+    x: Math.floor(COLS / 2) - 2,
+    y: 0,
+  };
+}
+
+// Rotation: 90° CW around bounding-box centre
+function rotateCells(cells) {
+  const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+  return cells.map(([x, y]) => [
+    Math.round(cy - y + cx),
+    Math.round(x - cx + cy),
+  ]);
+}
+
+function isValid(cells, px, py) {
+  return cells.every(([cx, cy]) => {
+    const nx = px + cx, ny = py + cy;
+    return nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS && !board[ny][nx];
+  });
+}
+
+function lockPiece() {
+  piece.cells.forEach(([cx, cy]) => {
+    const nx = piece.x + cx, ny = piece.y + cy;
+    if (ny >= 0) board[ny][nx] = piece.color;
+  });
+  clearLines();
+  piece = nextPiece;
+  nextPiece = randomPiece();
+  if (!isValid(piece.cells, piece.x, piece.y)) endGame();
+}
+
+function clearLines() {
+  let cleared = 0;
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (board[r].every(c => c)) {
+      board.splice(r, 1);
+      board.unshift(Array(COLS).fill(null));
+      cleared++; r++;
+    }
+  }
+  if (!cleared) return;
+  const pts = [0, 100, 300, 500, 800][cleared] * level;
+  score += pts;
+  lines += cleared;
+  level  = Math.floor(lines / 10) + 1;
+  dropInterval = Math.max(80, 800 - (level - 1) * 70);
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('score-display').textContent = score.toLocaleString();
+  document.getElementById('level-display').textContent = level;
+  document.getElementById('lines-display').textContent = lines;
+  document.getElementById('hi-display').textContent    = hiScore.toLocaleString();
+}
+
+// ── DRAWING ──
+function hex2rgb(hex) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function adjustColor(hex, amt) {
+  const [r,g,b] = hex2rgb(hex);
+  const c = v => Math.min(255, Math.max(0, v + amt));
+  return `rgb(${c(r)},${c(g)},${c(b)})`;
+}
+
+function drawBlock(c, col, row, color, alpha = 1) {
+  const x = col * CELL, y = row * CELL;
+  c.save();
+  c.globalAlpha = alpha;
+
+  // Base fill with subtle gradient
+  const grad = c.createLinearGradient(x, y, x + CELL, y + CELL);
+  grad.addColorStop(0, adjustColor(color, 30));
+  grad.addColorStop(1, adjustColor(color, -30));
+  c.fillStyle = grad;
+  c.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
+
+  // Top-left highlight
+  c.fillStyle = 'rgba(255,255,255,0.2)';
+  c.fillRect(x + 1, y + 1, CELL - 2, 4);
+  c.fillRect(x + 1, y + 1, 4, CELL - 2);
+
+  // Bottom-right shadow
+  c.fillStyle = 'rgba(0,0,0,0.2)';
+  c.fillRect(x + 1, y + CELL - 5, CELL - 2, 4);
+  c.fillRect(x + CELL - 5, y + 1, 4, CELL - 2);
+
+  c.restore();
+}
+
+function drawGhost(col, row, color) {
+  const x = col * CELL, y = row * CELL;
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = color;
+  ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 1.5, y + 1.5, CELL - 3, CELL - 3);
+  ctx.restore();
+}
+
+function drawBoard() {
+  // Background
+  ctx.fillStyle = '#0d1a26';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(26,111,181,0.08)';
+  ctx.lineWidth = 0.5;
+  for (let r = 0; r < ROWS; r++)
+    for (let col = 0; col < COLS; col++)
+      ctx.strokeRect(col * CELL, r * CELL, CELL, CELL);
+
+  // Locked blocks
+  for (let r = 0; r < ROWS; r++)
+    for (let col = 0; col < COLS; col++)
+      if (board[r][col]) drawBlock(ctx, col, r, board[r][col]);
+
+  if (!piece) return;
+
+  // Ghost
+  let gy = piece.y;
+  while (isValid(piece.cells, piece.x, gy + 1)) gy++;
+  if (gy !== piece.y)
+    piece.cells.forEach(([cx, cy]) => drawGhost(piece.x + cx, gy + cy, piece.color));
+
+  // Active piece
+  piece.cells.forEach(([cx, cy]) => drawBlock(ctx, piece.x + cx, piece.y + cy, piece.color));
+}
+
+function drawNext() {
+  nCtx.fillStyle = '#0d1a26';
+  nCtx.fillRect(0, 0, nextCvs.width, nextCvs.height);
+  if (!nextPiece) return;
+  const NC = 24;
+  const xs = nextPiece.cells.map(c => c[0]), ys = nextPiece.cells.map(c => c[1]);
+  const ox = Math.floor((4 - (Math.max(...xs) - Math.min(...xs) + 1)) / 2) - Math.min(...xs);
+  const oy = Math.floor((4 - (Math.max(...ys) - Math.min(...ys) + 1)) / 2) - Math.min(...ys);
+  nextPiece.cells.forEach(([cx, cy]) => {
+    const x = (cx + ox) * NC + 12, y = (cy + oy) * NC + 12;
+    const grad = nCtx.createLinearGradient(x, y, x + NC, y + NC);
+    grad.addColorStop(0, adjustColor(nextPiece.color, 30));
+    grad.addColorStop(1, adjustColor(nextPiece.color, -30));
+    nCtx.fillStyle = grad;
+    nCtx.fillRect(x + 1, y + 1, NC - 2, NC - 2);
+    nCtx.fillStyle = 'rgba(255,255,255,0.18)';
+    nCtx.fillRect(x + 1, y + 1, NC - 2, 3);
+  });
+}
+
+// ── GAME LOOP ──
+let lastTime = 0;
+function loop(ts) {
+  if (!running || paused) return;
+  dropTimer += ts - lastTime;
+  lastTime = ts;
+  if (dropTimer >= dropInterval) {
+    dropTimer = 0;
+    if (isValid(piece.cells, piece.x, piece.y + 1)) piece.y++;
+    else lockPiece();
+  }
+  drawBoard();
+  drawNext();
+  requestAnimationFrame(loop);
+}
+
+function startGame() {
+  initBoard();
+  score = 0; lines = 0; level = 1;
+  dropInterval = 800; dropTimer = 0;
+  piece = randomPiece();
+  nextPiece = randomPiece();
+  updateHUD();
+  running = true; paused = false;
+  hideOverlay();
+  lastTime = performance.now();
+  requestAnimationFrame(loop);
+}
+
+function endGame() {
+  running = false;
+  if (score > hiScore) {
+    hiScore = score;
+    localStorage.setItem('tag_tetris_hi', hiScore);
+  }
+  updateHUD();
+  showOverlay('Game Over', 'Your score', score, 'Play Again');
+}
+
+// ── OVERLAY ──
+function showOverlay(title, sub, scoreVal, btn) {
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-sub').textContent   = sub;
+  const sd = document.getElementById('overlay-score');
+  if (scoreVal !== null) {
+    sd.style.display = 'block';
+    sd.textContent   = scoreVal.toLocaleString();
+  } else {
+    sd.style.display = 'none';
+  }
+  document.getElementById('start-btn').textContent = btn;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function hideOverlay() {
+  document.getElementById('overlay').classList.add('hidden');
+}
+
+// ── INPUT ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'p' || e.key === 'P') {
+    if (!running) return;
+    paused = !paused;
+    if (!paused) { lastTime = performance.now(); requestAnimationFrame(loop); }
+    return;
+  }
+  if (!running || paused) return;
+  switch (e.key) {
+    case 'ArrowLeft':
+      if (isValid(piece.cells, piece.x - 1, piece.y)) piece.x--;
+      break;
+    case 'ArrowRight':
+      if (isValid(piece.cells, piece.x + 1, piece.y)) piece.x++;
+      break;
+    case 'ArrowDown':
+      if (isValid(piece.cells, piece.x, piece.y + 1)) { piece.y++; score += 1; }
+      else lockPiece();
+      break;
+    case 'ArrowUp': {
+      const rot = rotateCells(piece.cells);
+      if      (isValid(rot, piece.x,     piece.y)) { piece.cells = rot; }
+      else if (isValid(rot, piece.x + 1, piece.y)) { piece.cells = rot; piece.x++; }
+      else if (isValid(rot, piece.x - 1, piece.y)) { piece.cells = rot; piece.x--; }
+      break;
+    }
+    case ' ':
+      e.preventDefault();
+      while (isValid(piece.cells, piece.x, piece.y + 1)) { piece.y++; score += 2; }
+      lockPiece();
+      break;
+  }
+  drawBoard();
+  updateHUD();
+});
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+
+// Boot screen
+showOverlay('TAG Tetris', 'How high can you score?', null, 'Play');
+</script>
+</body>
+</html>
