@@ -53,10 +53,30 @@
       margin-bottom: 24px;
     }
 
-    /* SVG logo that replicates the TAG letter-mark */
-    .tag-logo-svg {
-      height: 44px;
+    /* ── TAG LETTERMARK ── */
+    .tag-mark {
+      display: flex;
+      align-items: baseline;
+      font-family: 'Lato', sans-serif;
+      font-weight: 900;
+      font-size: 46px;
+      line-height: 1;
+      letter-spacing: -0.01em;
       flex-shrink: 0;
+    }
+    .tag-mark .ltr   { color: var(--blue); }
+    .tag-mark .a-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .tag-mark .a-steel {
+      position: absolute;
+      left: 0; top: 0;
+      color: #8aaed4;
+      clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+    }
+    .tag-mark-sm {
+      font-size: 36px;
     }
 
     .header-right h1 {
@@ -237,17 +257,14 @@
 
 <!-- HEADER -->
 <header>
-  <!-- Accurate TAG lettermark SVG -->
-  <svg class="tag-logo-svg" viewBox="0 0 295 88" xmlns="http://www.w3.org/2000/svg">
-    <!-- T: crossbar + stem -->
-    <rect x="0"  y="0"  width="78" height="13" fill="#1a6fb5"/>
-    <rect x="33" y="0"  width="12" height="88" fill="#1a6fb5"/>
-    <!-- A: left stroke dark blue, right portion steel blue, split at apex -->
-    <polygon points="143,0 88,88 102,88"          fill="#1a6fb5"/>
-    <polygon points="143,0 102,88 198,88"          fill="#8aaed4"/>
-    <!-- G: arc from 12-o'clock CCW 270° to 3-o'clock, shelf, inner arc back -->
-    <path d="M 252,1 A 43,43 0 1,0 295,44 L 283,44 A 31,31 0 1,1 252,13 L 252,1 Z" fill="#1a6fb5"/>
-  </svg>
+  <div class="tag-mark">
+    <span class="ltr">T</span>
+    <span class="a-wrap">
+      <span class="ltr">A</span>
+      <span class="a-steel">A</span>
+    </span>
+    <span class="ltr">G</span>
+  </div>
 
   <div class="header-right">
     <h1>TAG Tetris</h1>
@@ -306,14 +323,14 @@
 <!-- OVERLAY -->
 <div id="overlay">
   <div class="overlay-card">
-    <!-- Same TAG SVG in overlay -->
-    <svg class="overlay-logo" viewBox="0 0 295 88" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0"  y="0"  width="78" height="13" fill="#1a6fb5"/>
-      <rect x="33" y="0"  width="12" height="88" fill="#1a6fb5"/>
-      <polygon points="143,0 88,88 102,88"          fill="#1a6fb5"/>
-      <polygon points="143,0 102,88 198,88"          fill="#8aaed4"/>
-      <path d="M 252,1 A 43,43 0 1,0 295,44 L 283,44 A 31,31 0 1,1 252,13 L 252,1 Z" fill="#1a6fb5"/>
-    </svg>
+    <div class="tag-mark tag-mark-sm">
+      <span class="ltr">T</span>
+      <span class="a-wrap">
+        <span class="ltr">A</span>
+        <span class="a-steel">A</span>
+      </span>
+      <span class="ltr">G</span>
+    </div>
     <h2 id="overlay-title">TAG Tetris</h2>
     <p class="sub" id="overlay-sub">How high can you score?</p>
     <div class="overlay-score" id="overlay-score"></div>
