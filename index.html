@@ -727,7 +727,7 @@ function endGame() {
     localStorage.setItem('tag_tetris_hi', hiScore);
   }
   updateHUD();
-  if (playerName && score > 0) submitScore(playerName, score);
+  if (playerName) submitScore(playerName, score);
   showOverlay('Game Over', 'Your score', score, 'Play Again', false);
 }
 
@@ -867,13 +867,29 @@ function setupLiveLeaderboard() {
       snap.forEach(child => arr.push(child.val()));
       arr.sort((a, b) => b.score - a.score);
       renderLeaderboard(arr);
+    }, err => {
+      console.warn('Leaderboard read error:', err);
     });
+}
+
+function refreshLeaderboard() {
+  db.ref('scores').orderByChild('score').limitToLast(10).once('value', snap => {
+    const arr = [];
+    snap.forEach(child => arr.push(child.val()));
+    arr.sort((a, b) => b.score - a.score);
+    renderLeaderboard(arr);
+  });
 }
 
 function submitScore(name, scoreVal) {
   saveLocalScore(name, scoreVal);
   if (!db) return;
-  db.ref('scores').push({ name, score: scoreVal, ts: Date.now() });
+  db.ref('scores').push({ name, score: scoreVal, ts: Date.now() })
+    .then(() => refreshLeaderboard())
+    .catch(err => {
+      console.error('Score submit failed:', err);
+      refreshLeaderboard();
+    });
 }
 
 // ── LOCAL STORAGE FALLBACK ──
