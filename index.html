@@ -859,25 +859,13 @@ function initFirebase() {
 }
 
 function setupLiveLeaderboard() {
-  db.ref('scores')
-    .orderByChild('score')
-    .limitToLast(10)
-    .on('value', snap => {
-      const arr = [];
-      snap.forEach(child => arr.push(child.val()));
-      arr.sort((a, b) => b.score - a.score);
-      renderLeaderboard(arr);
-    }, err => {
-      console.warn('Leaderboard read error:', err);
-    });
-}
-
-function refreshLeaderboard() {
-  db.ref('scores').orderByChild('score').limitToLast(10).once('value', snap => {
+  db.ref('scores').on('value', snap => {
     const arr = [];
     snap.forEach(child => arr.push(child.val()));
     arr.sort((a, b) => b.score - a.score);
-    renderLeaderboard(arr);
+    renderLeaderboard(arr.slice(0, 10));
+  }, err => {
+    console.warn('Leaderboard read error:', err);
   });
 }
 
@@ -885,11 +873,7 @@ function submitScore(name, scoreVal) {
   saveLocalScore(name, scoreVal);
   if (!db) return;
   db.ref('scores').push({ name, score: scoreVal, ts: Date.now() })
-    .then(() => refreshLeaderboard())
-    .catch(err => {
-      console.error('Score submit failed:', err);
-      refreshLeaderboard();
-    });
+    .catch(err => console.error('Score submit failed:', err));
 }
 
 // ── LOCAL STORAGE FALLBACK ──
