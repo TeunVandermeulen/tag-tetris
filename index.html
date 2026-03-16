@@ -484,10 +484,6 @@
   </div>
 </div>
 
-<!-- Firebase Realtime Database (compat SDK) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
 <script>
 // ─────────────────────────────────────────────
 //  TAG TETRIS
@@ -817,81 +813,31 @@ document.getElementById('player-name-input').addEventListener('keydown', e => {
 });
 
 // ─────────────────────────────────────────────
-//  LEADERBOARD & FIREBASE
+//  LEADERBOARD  (Firebase REST API — no SDK)
 // ─────────────────────────────────────────────
+const DB = 'https://tag-tetris-default-rtdb.europe-west1.firebasedatabase.app';
 
-// ⚠️  FIREBASE SETUP  ──────────────────────────
-// To enable a shared live leaderboard across all players:
-//  1. Go to https://console.firebase.google.com
-//  2. Create a project → Add a web app → copy the config below
-//  3. Go to Build → Realtime Database → Create database (start in test mode)
-//  4. Set database rules to allow read/write (test mode does this by default)
-//
-// Without a config the leaderboard falls back to localStorage (local only).
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyDjGfY-_tgGRVJhjPDahVSN7s7DorUtxCg",
-  authDomain:        "tag-tetris.firebaseapp.com",
-  databaseURL:       "https://tag-tetris-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:         "tag-tetris",
-  storageBucket:     "tag-tetris.firebasestorage.app",
-  messagingSenderId: "944322582130",
-  appId:             "1:944322582130:web:083d0f159794588c9314eb"
-};
-// ─────────────────────────────────────────────
-
-let db = null;
 let playerName = localStorage.getItem('tag_tetris_player') || '';
 
-function initFirebase() {
-  if (!FIREBASE_CONFIG.apiKey) {
-    renderLeaderboard(getLocalScores());
-    return;
-  }
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
-    db = firebase.database();
-    document.getElementById('lb-live-indicator').style.display = 'inline-flex';
-    setupLiveLeaderboard();
-  } catch (err) {
-    console.warn('Firebase init failed:', err);
-    renderLeaderboard(getLocalScores());
-  }
-}
-
 function fetchLeaderboard() {
-  db.ref('scores').once('value').then(snap => {
-    const arr = [];
-    snap.forEach(child => arr.push(child.val()));
-    arr.sort((a, b) => b.score - a.score);
-    renderLeaderboard(arr.slice(0, 10));
-  }).catch(err => console.warn('Leaderboard fetch error:', err));
-}
-
-function setupLiveLeaderboard() {
-  fetchLeaderboard();
-  setInterval(fetchLeaderboard, 5000);
+  fetch(`${DB}/scores.json`, { cache: 'no-store' })
+    .then(r => r.json())
+    .then(data => {
+      if (!data) { renderLeaderboard([]); return; }
+      const arr = Object.values(data).sort((a, b) => b.score - a.score);
+      renderLeaderboard(arr.slice(0, 10));
+    })
+    .catch(err => console.warn('Leaderboard fetch error:', err));
 }
 
 function submitScore(name, scoreVal) {
-  saveLocalScore(name, scoreVal);
-  if (!db) return;
-  db.ref('scores').push({ name, score: scoreVal, ts: Date.now() })
+  fetch(`${DB}/scores.json`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ name, score: scoreVal, ts: Date.now() }),
+  })
     .then(() => fetchLeaderboard())
     .catch(err => console.error('Score submit failed:', err));
-}
-
-// ── LOCAL STORAGE FALLBACK ──
-function saveLocalScore(name, scoreVal) {
-  const scores = getLocalScores();
-  scores.push({ name, score: scoreVal });
-  scores.sort((a, b) => b.score - a.score);
-  localStorage.setItem('tag_tetris_scores', JSON.stringify(scores.slice(0, 50)));
-  if (!db) renderLeaderboard(scores.slice(0, 10));
-}
-
-function getLocalScores() {
-  try { return JSON.parse(localStorage.getItem('tag_tetris_scores') || '[]'); }
-  catch { return []; }
 }
 
 // ── RENDER ──
@@ -919,7 +865,9 @@ function renderLeaderboard(scores) {
 }
 
 // ── BOOT ──
-initFirebase();
+document.getElementById('lb-live-indicator').style.display = 'inline-flex';
+fetchLeaderboard();
+setInterval(fetchLeaderboard, 5000);
 showOverlay('TAG Tetris', 'How high can you score?', null, 'Play', true);
 </script>
 </body>
