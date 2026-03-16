@@ -858,21 +858,25 @@ function initFirebase() {
   }
 }
 
-function setupLiveLeaderboard() {
-  db.ref('scores').on('value', snap => {
+function fetchLeaderboard() {
+  db.ref('scores').once('value').then(snap => {
     const arr = [];
     snap.forEach(child => arr.push(child.val()));
     arr.sort((a, b) => b.score - a.score);
     renderLeaderboard(arr.slice(0, 10));
-  }, err => {
-    console.warn('Leaderboard read error:', err);
-  });
+  }).catch(err => console.warn('Leaderboard fetch error:', err));
+}
+
+function setupLiveLeaderboard() {
+  fetchLeaderboard();
+  setInterval(fetchLeaderboard, 5000);
 }
 
 function submitScore(name, scoreVal) {
   saveLocalScore(name, scoreVal);
   if (!db) return;
   db.ref('scores').push({ name, score: scoreVal, ts: Date.now() })
+    .then(() => fetchLeaderboard())
     .catch(err => console.error('Score submit failed:', err));
 }
 
